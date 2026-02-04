@@ -36,7 +36,7 @@ export const AudioUploader = () => {
       await ffmpeg.writeFile('input', await fetchFile(file));
       
       // Ejecutar conversión
-      await ffmpeg.exec(['-i', 'input_video', '-vn', '-ab', '64k', 'output.mp3']);
+      await ffmpeg.exec(['-i', 'input_video', '-vn', '-ab', '32k', '-ar', '16000', 'output.mp3']);
       
       const data = await ffmpeg.readFile('output.mp3');
       const audioFile = new File([new Blob([data])], 'audio_listo.mp3', { type: 'audio/mp3' });
