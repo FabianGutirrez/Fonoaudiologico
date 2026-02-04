@@ -1,5 +1,7 @@
+import { SYSTEM_INSTRUCTION, USER_PROMPT } from '../constants';
 
-const fileToBase64 = (file: File): Promise<{ base64Media: string; mimeType: string }> => {
+// Convierte el archivo procesado por FFmpeg a Base64 para el transporte
+const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -7,41 +9,59 @@ const fileToBase64 = (file: File): Promise<{ base64Media: string; mimeType: stri
       const result = reader.result as string;
       const base64String = result.split(',')[1];
       if (base64String) {
-        resolve({ base64Media: base64String, mimeType: file.type });
+        resolve(base64String);
       } else {
-        reject(new Error("Failed to read file as base64."));
+        reject(new Error("Error al convertir audio a base64."));
       }
     };
     reader.onerror = (error) => reject(error);
   });
 };
 
-export const transcribeMedia = async (mediaFile: File): Promise<{ transcription: string; notes: string }> => {
-  try {
-    const { base64Media, mimeType } = await fileToBase64(mediaFile);
+// Mantiene tu lógica original para separar la transcripción de las notas
+const parseTranscriptionResponse = (text: string) => {
+  const fielMatch = text.match(/Transcripción Fiel:([\s\S]*?)(\n\nNotas de Observación:|$)/i);
+  const notasMatch = text.match(/Notas de Observación:([\s\S]*)/i);
 
-    // Llamamos a nuestro propio backend seguro en lugar de a la API de Gemini directamente.
+  const transcription = fielMatch ? fielMatch[1].trim() : "No se pudo extraer la transcripción detallada.";
+  const notes = notasMatch ? notasMatch[1].trim() : "No se pudieron extraer las notas.";
+
+  return { transcription, notes };
+};
+
+export const transcribeMedia = async (mediaFile: File) => {
+  try {
+    const base64Media = await fileToBase64(mediaFile);
+
+    // Llamada a tu Backend Proxy en Vercel (/api/transcribe.ts)
     const response = await fetch('/api/transcribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ base64Media, mimeType }),
+      body: JSON.stringify({
+        audioData: base64Media,
+        mimeType: mediaFile.type,
+        systemInstruction: SYSTEM_INSTRUCTION,
+        userPrompt: USER_PROMPT
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || `Error del servidor: ${response.statusText}`);
+      throw new Error(errorData.error || 'Error en el servidor de transcripción');
     }
 
-    const result = await response.json();
-    return result;
+    const data = await response.json();
+
+    if (!data.text) {
+      throw new Error('La IA no devolvió texto. Intenta con un audio más claro.');
+    }
+
+    return parseTranscriptionResponse(data.text);
 
   } catch (error) {
-    console.error("Error al transcribir:", error);
-    if (error instanceof Error) {
-        throw new Error(`No se pudo comunicar con el servicio de transcripción. Detalle: ${error.message}`);
-    }
-    throw new Error('Ocurrió un error desconocido durante la comunicación con el servidor.');
+    console.error("Error en geminiService:", error);
+    throw error;
   }
 };
