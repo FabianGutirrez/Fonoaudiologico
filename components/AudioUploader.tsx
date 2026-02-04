@@ -1,30 +1,33 @@
 import { useState, useRef } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { transcribeMedia } from '../services/geminiService';
 
-export const AudioUploader = () => {
+interface AudioUploaderProps {
+  onFileChange: (file: File | null) => void;
+  disabled?: boolean;
+}
+
+export const AudioUploader: React.FC<AudioUploaderProps> = ({ onFileChange, disabled }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
-  const [progress, setProgress] = useState(0); // Nuevo estado para el %
+  const [progress, setProgress] = useState(0);
   const [optimizedFile, setOptimizedFile] = useState<File | null>(null);
   const ffmpegRef = useRef(new FFmpeg());
 
   const processVideo = async (file: File) => {
     setLoading(true);
     setOptimizedFile(null);
+    onFileChange(null); // Notificar al padre que estamos procesando
     setProgress(0);
     const ffmpeg = ffmpegRef.current;
 
-    // Escuchador de progreso
     ffmpeg.on('progress', ({ progress }) => {
-      // progress es un valor de 0 a 1, lo convertimos a 0-100
       setProgress(Math.round(progress * 100));
     });
 
     try {
       if (!ffmpeg.loaded) {
-        setStatus('Cargando motor...');
+        setStatus('Iniciando motor fonoaudiológico...');
         const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
         await ffmpeg.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
@@ -32,29 +35,39 @@ export const AudioUploader = () => {
         });
       }
 
-      setStatus('Optimizando video para análisis...');
-      await ffmpeg.writeFile('input', await fetchFile(file));
+      // --- CORRECCIÓN 1: LIMPIEZA Y NOMBRES COHERENTES ---
+      try {
+        await ffmpeg.deleteFile('input_file');
+        await ffmpeg.deleteFile('output.mp3');
+      } catch (e) { /* Archivos no existen aún */ }
+
+      setStatus('Procesando video pesado (extrayendo audio clínico)...');
+      // Escribimos como 'input_file'
+      await ffmpeg.writeFile('input_file', await fetchFile(file));
       
-      // Ejecutar conversión
-      // En AudioUploader.tsx, busca la línea de ffmpeg.exec y cámbiala a esta:
+      // --- CORRECCIÓN 2: COMANDOS DE COMPRESIÓN OPTIMIZADOS ---
       await ffmpeg.exec([
-        '-i', 'input_video', 
-        '-vn',           // Elimina video
-        '-ac', '1',      // Convierte a Mono (pesa la mitad que estéreo)
-        '-ar', '16000',  // Frecuencia de muestreo baja (suficiente para voz)
-        '-ab', '32k',    // Bitrate ultra bajo (32kbps)
+        '-i', 'input_file', // Debe coincidir con el nombre de arriba
+        '-vn', 
+        '-ac', '1', 
+        '-ar', '16000', 
+        '-ab', '32k', 
         'output.mp3'
       ]);
       
+      // --- CORRECCIÓN 3: LECTURA SEGURA DE DATOS ---
       const data = await ffmpeg.readFile('output.mp3');
-      const audioFile = new File([new Blob([data])], 'audio_listo.mp3', { type: 'audio/mp3' });
+      const audioUint8 = new Uint8Array(data as ArrayBuffer); 
+      const audioBlob = new Blob([audioUint8], { type: 'audio/mp3' });
+      const audioFile = new File([audioBlob], 'audio_analisis.mp3', { type: 'audio/mp3' });
       
       setOptimizedFile(audioFile);
-      setStatus('¡Optimización lista!');
+      onFileChange(audioFile); // Enviamos el archivo pequeño al App.tsx
+      setStatus('✓ Video optimizado. Listo para transcribir.');
       setProgress(100);
     } catch (e) {
       console.error(e);
-      setStatus('Error en el proceso.');
+      setStatus('Error al procesar. Intenta con un archivo más corto.');
     } finally {
       setLoading(false);
     }
@@ -67,37 +80,24 @@ export const AudioUploader = () => {
           type="file" 
           accept="video/*,audio/*" 
           onChange={(e) => e.target.files?.[0] && processVideo(e.target.files[0])}
-          disabled={loading}
+          disabled={loading || disabled}
           className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
         />
 
-        {/* Barra de Progreso Visual */}
         {loading && (
-          <div className="w-full bg-gray-200 rounded-full h-4 mt-4 overflow-hidden">
+          <div className="w-full bg-gray-200 rounded-full h-3 mt-2 overflow-hidden">
             <div 
-              className="bg-teal-600 h-full transition-all duration-300 ease-out"
+              className="bg-teal-600 h-full transition-all duration-300 shadow-[0_0_10px_rgba(13,148,136,0.5)]"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
         )}
         
-        {loading && <p className="text-xs text-teal-700 font-bold">{progress}% procesado</p>}
-
-        <button
-          onClick={() => optimizedFile && transcribeMedia(optimizedFile)}
-          disabled={!optimizedFile || loading}
-          className={`mt-4 px-8 py-2 rounded-lg font-bold transition-all ${
-            !optimizedFile || loading 
-              ? 'bg-gray-200 text-gray-400' 
-              : 'bg-teal-600 text-white hover:bg-teal-700'
-          }`}
-        >
-          {loading ? 'Espere...' : 'Iniciar Transcripción'}
-        </button>
+        {loading && <p className="text-xs text-teal-700 font-bold animate-pulse">{progress}% procesado</p>}
       </div>
 
       {status && (
-        <p className="mt-4 text-sm text-center text-slate-600 font-medium">
+        <p className={`mt-4 text-sm text-center font-medium ${status.includes('Error') ? 'text-red-500' : 'text-slate-600'}`}>
           {status}
         </p>
       )}
