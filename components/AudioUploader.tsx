@@ -2,15 +2,16 @@ import { useState, useRef } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
+// 1. Definimos qué recibe el componente
 interface AudioUploaderProps {
   onFileChange: (file: File | null) => void;
-  disabled?: boolean;
+  disabled?: boolean; // El signo ? significa que es opcional
 }
 
+// 2. Aplicamos la interfaz al componente
 export const AudioUploader: React.FC<AudioUploaderProps> = ({ onFileChange, disabled }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
-  const [progress, setProgress] = useState(0);
   const [optimizedFile, setOptimizedFile] = useState<File | null>(null);
   const ffmpegRef = useRef(new FFmpeg());
 
