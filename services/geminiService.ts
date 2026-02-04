@@ -40,7 +40,7 @@ export const transcribeMedia = async (mediaFile: File) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        audioData: base64Media,
+        mediaData: base64Media, // Usamos un nombre genérico
         mimeType: mediaFile.type,
         systemInstruction: SYSTEM_INSTRUCTION,
         userPrompt: USER_PROMPT
@@ -48,8 +48,9 @@ export const transcribeMedia = async (mediaFile: File) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error en el servidor de transcripción');
+      const errorText = await response.text(); // Leemos como texto primero
+      console.error("Respuesta del servidor:", errorText);
+      throw new Error(`Error ${response.status}: El servidor no pudo procesar el archivo.`);
     }
 
     const data = await response.json();
