@@ -34,13 +34,14 @@ export const transcribeMedia = async (mediaFile: File) => {
     const base64Media = await fileToBase64(mediaFile);
 
     // Llamada a tu Backend Proxy en Vercel (/api/transcribe.ts)
+// En geminiService.ts
     const response = await fetch('/api/transcribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        mediaData: base64Media, // Usamos un nombre genérico
+        mediaData: base64Media, // Este nombre debe ser idéntico en el backend
         mimeType: mediaFile.type,
         systemInstruction: SYSTEM_INSTRUCTION,
         userPrompt: USER_PROMPT
