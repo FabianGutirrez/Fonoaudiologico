@@ -36,7 +36,15 @@ export const AudioUploader = () => {
       await ffmpeg.writeFile('input', await fetchFile(file));
       
       // Ejecutar conversión
-      await ffmpeg.exec(['-i', 'input_video', '-vn', '-ab', '32k', '-ar', '16000', 'output.mp3']);
+      // En AudioUploader.tsx, busca la línea de ffmpeg.exec y cámbiala a esta:
+      await ffmpeg.exec([
+        '-i', 'input_video', 
+        '-vn',           // Elimina video
+        '-ac', '1',      // Convierte a Mono (pesa la mitad que estéreo)
+        '-ar', '16000',  // Frecuencia de muestreo baja (suficiente para voz)
+        '-ab', '32k',    // Bitrate ultra bajo (32kbps)
+        'output.mp3'
+      ]);
       
       const data = await ffmpeg.readFile('output.mp3');
       const audioFile = new File([new Blob([data])], 'audio_listo.mp3', { type: 'audio/mp3' });
