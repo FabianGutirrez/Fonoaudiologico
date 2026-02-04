@@ -64,43 +64,40 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({ onFileChange, disa
     }
   };
 
-  return (
-    <div className="p-6 border-2 border-dashed border-teal-400 rounded-xl bg-teal-50/30 transition-all hover:bg-teal-50/50">
-      <div className="flex flex-col items-center gap-4">
-        <label className="flex flex-col items-center justify-center w-full cursor-pointer">
-          <span className="mb-2 text-sm font-semibold text-teal-700 text-center">
-            {loading ? 'Procesando archivo...' : 'Seleccionar Video o Audio para Análisis'}
-          </span>
-          <input 
-            type="file" 
-            accept="video/*,audio/*" 
-            onChange={(e) => e.target.files?.[0] && processVideo(e.target.files[0])}
-            disabled={loading || disabled}
-            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-600 file:text-white hover:file:bg-teal-700 transition-colors"
-          />
-        </label>
+// AudioUploader.tsx (Parte del return)
+return (
+  <div className="p-6 border-2 border-dashed border-teal-400 rounded-xl bg-teal-50/30">
+    <div className="flex flex-col items-center gap-4">
+      <label className="w-full cursor-pointer">
+        <span className="mb-2 block text-center text-sm font-semibold text-teal-700">
+          {loading ? 'Procesando archivo...' : 'Seleccionar Video o Audio'}
+        </span>
+        <input 
+          type="file" 
+          accept="video/*,audio/*" 
+          onChange={(e) => e.target.files?.[0] && processVideo(e.target.files[0])}
+          disabled={loading || disabled}
+          className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-teal-600 file:text-white"
+        />
+      </label>
 
-        {/* Bloque de carga integrado dentro del contenedor principal */}
-        {loading && (
-          <div className="w-full space-y-2 mt-2">
-            <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-              <div 
-                className="bg-teal-600 h-full transition-all duration-300 shadow-[0_0_8px_rgba(13,148,136,0.4)]" 
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            <p className="text-[10px] text-center font-bold text-teal-600 uppercase tracking-tighter">
-              {progress}% procesado
-            </p>
+      {/* Esta sección usa 'progress' que debe estar definido arriba con useState */}
+      {loading && (
+        <div className="w-full space-y-2 mt-2">
+          <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+            <div 
+              className="bg-teal-600 h-full transition-all duration-300" 
+              style={{ width: `${progress}%` }}
+            ></div>
           </div>
-        )}
-
-        {status && (
-          <p className={`text-xs text-center font-medium ${status.includes('Error') ? 'text-red-500' : 'text-slate-600'}`}>
-            {status}
+          <p className="text-[10px] text-center font-bold text-teal-600">
+            {progress}% procesado
           </p>
-        )}
-      </div>
-    </div>
-  );
+        </div>
+      )}
+
+      {status && <p className="text-xs text-slate-600">{status}</p>}
+    </div> 
+  </div> // <-- Cierre del contenedor principal
+);
 };
